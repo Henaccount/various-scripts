@@ -1,0 +1,163 @@
+<html>
+<head>
+<script>
+
+
+function startprog(){
+
+//getfilelist(path)
+//loop
+
+var fso = new ActiveXObject("Scripting.FileSystemObject");
+var Folder = fso.GetFolder(path.value);
+var FileCollection = Folder.Files;
+if(!fso.FolderExists(path.value + "/modified_lisps") )
+fso.CreateFolder(path.value + "/modified_lisps");
+
+
+var Files = new Array();
+
+for(var objEnum = new Enumerator(FileCollection); !objEnum.atEnd(); objEnum.moveNext())
+{
+   strFileName = objEnum.item();
+   tmpArr = strFileName.name.split("/")
+   
+   if(tmpArr[tmpArr.length-1].indexOf(".lsp") != -1 && tmpArr[tmpArr.length-1].indexOf("modified_lisps") == -1){
+		
+		content = readFile(strFileName);
+		if(content.indexOf("(plantpartconvert") == -1){
+		
+		area.value += "working on " + tmpArr[tmpArr.length-1] + "\n";
+		
+		thelines = content.split("\r\n");
+		
+		for (i=0;i<thelines.length;i++){
+			if (thelines[i].indexOf("testacpscript1") != -1){
+				createcallsplit = thelines[i].split(" ");
+				
+				thelines[i] += "\r\n" + thelines[i+1] + "\r\n" + '(command "_.rename" "_bl" (cdr(assoc 2(entget (entlast)))) "' + createcallsplit[1].replace(/\"/g,"") + "_" + createcallsplit[2].replace(/[\"\)]/g,"").replace(/[=,]/g,"_") + '")\r\n(command "_.plantpartconvert" (entlast) "_X")\r\n';
+				thelines[i+1] = "";		
+			}
+		
+		}
+
+		content = "";
+		for (j=0;j<thelines.length;j++){
+			if(thelines[j]!="")
+			content += thelines[j];		
+		}
+		newfilename = "";
+		for(i=0;i<tmpArr.length-1;i++){
+			newfilename += tmpArr[i] + "/";
+		}
+		newfilename += "modified_lisps/" +  tmpArr[tmpArr.length-1];
+		writeToFile(content, path.value + "/" + newfilename);
+		}
+		else
+		{
+		area.value += "file: " + tmpArr[tmpArr.length-1] + " has already been processed, no work done!\n";
+		}
+   }
+   
+   Files.push(strFileName)
+}
+
+
+
+
+}
+
+
+
+
+function writeToFile(inText, place){
+var fso = new ActiveXObject("Scripting.FileSystemObject");
+//alert(place);
+var a = fso.CreateTextFile(place);
+a.Write(inText);
+a.Close();
+}
+
+
+function readFile(fname){
+var fso = new ActiveXObject("Scripting.FileSystemObject");
+var a = fso.OpenTextFile(fname, 1, false, 0);
+thecont="";
+try{
+thecont=a.ReadAll();
+}catch (e){};
+a.Close();
+return thecont;
+}
+
+
+
+
+
+
+
+
+</script>
+<hta:application 
+id="modify_preview_lisps" 
+icon="./ico.bmp"
+applicationName="modify_preview_lisps" 
+border="5pt" 
+borderStyle="raised"
+caption="yes"
+maximizeButton="yes"
+minimizeButton="yes"
+showInTaskBar="yes"
+singleInstance="yes"
+sysMenu="yes"
+windowState="normal"
+>
+</head>
+<body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PCF Folder (don't use backslashes!): <input type=text name=path value="C:/Users/bussm/Desktop/PreviewLisps" size=256>
+<textarea cols=80 rows=20 name=area wrap="off"></textarea><br>
+<input type=button value=start onclick=startprog()><br>
+<pre>
+this tool is adding 2 lines for each elements in all *.lsp files in <path> 
+resulting files will be in the "modified_lisps" folder
+
+Example:
+
+before script:
+(testacpscript1 "CPVX002" "L=100.00,D=150.00")
+(command "_.move" (entlast) "" "0,0,0" "100,0,0")
+
+after script:
+(testacpscript1 "CPVX002" "L=100.00,D=150.00")
+(command "_.move" (entlast) "" "0,0,0" "100,0,0")
+(command "_.rename" "_bl" (cdr(assoc 2(entget (entlast)))) "CPVX002_L100_D150")
+(command "_.plantpartconvert" (entlast) "_X")
+</pre>
+
+</body></html>
