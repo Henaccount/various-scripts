@@ -1,0 +1,208 @@
+<html>
+<head>
+<script>
+
+
+var ForAppending;
+var ForAppending = 8;
+var theFolder;
+
+
+
+function startprog(jobflag){
+
+if(Datei.value == ""){
+alert("select project and try again");
+return;
+}
+
+if(jobflag == 0 && newname.value == ""){ 
+alert("if you want to rename, insert new project name and try again");
+return;
+}
+
+if(jobflag == 0){
+	area.value += "\nxml and database will be updated, project folder needs to be updated manually";
+}
+
+var fso, f, fc, s;
+fso = new ActiveXObject("Scripting.FileSystemObject");
+var outpt = "";
+var sqlfile = unescape(document.location.href).replace(/\\/g,"/").replace(".hta",".sql").substring(8);
+var batfile = unescape(document.location.href).replace(/\\/g,"/").replace(".hta",".bat").substring(8);
+var batstr, sqlstr;
+
+if(jobflag == 0){
+
+	if(!coldrunchbx.checked){
+		var filearr = createFileList(theFolder);
+		for(var i=0; i<filearr.length; i++){
+
+			if(String(filearr[i]).indexOf(".xml") != -1){
+				renamexml(String(filearr[i]));
+				
+			}
+		}
+	}else{
+		area.value += "\nxml file part disabled by coldrun";
+	}
+	
+	sqlstr = "update PnPProject set Project_Name='" + newname.value + "';";
+
+	batstr = '"' + sqliteexe.value + '" "' + theFolder + '/Piping.dcf" < "' + sqlfile + '"\r\n';
+	batstr += '"' + sqliteexe.value + '" "' + theFolder + '/Processpower.dcf" < "' + sqlfile + '"\r\n';
+	batstr += '"' + sqliteexe.value + '" "' + theFolder + '/Ortho.dcf" < "' + sqlfile + '"\r\n';
+	batstr += '"' + sqliteexe.value + '" "' + theFolder + '/Iso.dcf" < "' + sqlfile + '"\r\n';
+	batstr += '"' + sqliteexe.value + '" "' + theFolder + '/Misc.dcf" < "' + sqlfile + '"\r\n';
+}
+else{
+	sqlstr = "UPDATE PnPDrawings SET Path='" + Datei.value.substring(0,Datei.value.lastIndexOf("\\")+1) + "' || PnPRelativePath;";
+
+	batstr = '"' + sqliteexe.value + '" "' + theFolder + '/Ortho.dcf" < "' + sqlfile + '"\r\n';
+	batstr += '"' + sqliteexe.value + '" "' + theFolder + '/Iso.dcf" < "' + sqlfile + '"\r\n';
+}
+
+writeToFile(sqlstr, sqlfile);
+area.value += "\nfile created: " + sqlfile;
+area.value += "\nfile contents: " + sqlstr;
+
+writeToFile(batstr, batfile);
+area.value += "\nfile created: " + batfile;
+area.value += "\nfile contents: " + batstr;
+
+
+var ShellObject = new ActiveXObject("wscript.shell");
+if(!coldrunchbx.checked){
+	area.value += "\nexecuting batchfile: " + batfile;
+	ShellObject.Run("\"" + batfile + "\"");
+}
+else{
+	area.value += "\n not executing batchfile: " + batfile + " due to coldrun checkbox checked";
+}
+
+area.value += "\nscript finished";
+}
+
+function renamexml(filename){
+
+	var project = readFile(filename);
+	if(project.indexOf("<ProjectName>") != -1 && project.indexOf("</ProjectName>") != -1 ){
+		var oldname = project.split("<ProjectName>")[1].split("</ProjectName>")[0];
+		project = project.split("<ProjectName>")[0] + "<ProjectName>" + newname.value + "</ProjectName>" + project.split("</ProjectName>")[1];
+		writeToFile(project, filename);
+		area.value += "\nmodified: " + filename;
+	}
+}
+
+function parseDir(){
+tmpstr = Datei.value.replace(/\\/g,"/");
+tmpstr = tmpstr.substring(0,tmpstr.lastIndexOf("/"));
+theFolder = tmpstr;
+}
+
+
+function writeToFile(inText, place){
+var fso = new ActiveXObject("Scripting.FileSystemObject");
+var a = fso.CreateTextFile(place);
+a.Write(inText);
+a.Close();
+}
+
+
+
+function readFile(fname){
+var fso = new ActiveXObject("Scripting.FileSystemObject");
+var a = fso.OpenTextFile(fname, 1, false, 0);
+thecont="";
+try{
+thecont=a.ReadAll();
+}catch (e){};
+a.Close();
+return thecont;
+}
+
+function test(){
+teststr = "2B07AAC4-A6AE-4100-956B-CE95A5DDD776";
+alert(isDeleteAble(teststr));
+}
+
+
+function createFileList(folderspec)
+{
+	var fso, f, fc, s;
+	fso = new ActiveXObject("Scripting.FileSystemObject");
+	f = fso.GetFolder(folderspec);
+	fc = new Enumerator(f.files);
+	s = "";
+	theret = new Array();
+	for (; !fc.atEnd(); fc.moveNext())
+	{
+		theret.push(fc.item());	
+	}
+	return theret;
+}
+
+
+
+
+</script>
+<hta:application 
+id="RenamePlantProject" 
+icon="./ico.bmp"
+applicationName="RenamePlantProject" 
+border="5pt" 
+borderStyle="raised"
+caption="yes"
+maximizeButton="yes"
+minimizeButton="yes"
+showInTaskBar="yes"
+singleInstance="yes"
+sysMenu="yes"
+windowState="normal"
+>
+</head>
+<body>
+
+<p align=center>
+Please select the Project.xml of the Project to be worked on<br><br>
+<input name="Datei" type="file" size="100" accept="text/*" onchange="parseDir()"><br><br>
+insert new project name: <input type=text name=newname value="" size=100><br><br>
+
+<textarea cols=65 rows=10 name=area wrap="off" style="color:red;font-size:12pt">
+
+</textarea><br>
+<!-- <iframe src="empty" id=area height=400 width=800></iframe> -->
+<br><br>
+coldrun <input type="checkbox" name="coldrunchbx"> <input type=button value="Rename Project" onclick=startprog(0)> <input type=button value="Repair iso.dcf ortho.dcf pathing for cloud upload" onclick=startprog(1)> <input type=reset onclick=area.value="" value="empty log"><br><br> <!-- <input type=button value=test onclick=test()> -->
+path to command line shell (see below comments):<br><br> <input type=text name=sqliteexe value="C:\Program Files\SQLite ODBC Driver for Win64\sqlite3.exe" size=100><br>
+<pre>
+You need the command line shell for SQLite: https://www.sqlite.org/cli.html (go to Download page)
+
+sqlite-dll-win64-x64-3230100.zip
+(731.12 KiB)  64-bit DLL (x64) for SQLite version 3.23.1.
+(sha1: aa160ed756bb35c84ff0de8978fb9dfe615458f8) 
+
+ sqlite-tools-win32-x86-3230100.zip
+(1.63 MiB)  A bundle of command-line tools for managing SQLite database files, including the command-line shell program, the sqldiff.exe program, and the sqlite3_analyzer.exe program.
+(sha1: 54a69ca3611828dcc7ffdde7ab26bfe0fe14daed) 
+
+put the files into the C:\Windows path (if you use a different one, change accordingly in the source of this file)
+
+All xml files on root level of the project folder will be checked for the <project></project> tag and it will be filled with the new project name. 
+(so if you want to make backups of your xml files, don't put them here)
+
+// Permission to use, copy, modify, and distribute this software in
+// object code form for any purpose and without fee is hereby granted,
+// provided that the above copyright notice appears in all copies and
+// that both that copyright notice and the limited warranty and
+// restricted rights notice below appear in all supporting
+// documentation.
+//
+// AUTODESK PROVIDES THIS PROGRAM "AS IS" AND WITH ALL FAULTS.
+// AUTODESK SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTY OF
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR USE.  AUTODESK, INC.
+// DOES NOT WARRANT THAT THE OPERATION OF THE PROGRAM WILL BE
+// UNINTERRUPTED OR ERROR FREE.
+</pre>
+</p>
+</body></html>
